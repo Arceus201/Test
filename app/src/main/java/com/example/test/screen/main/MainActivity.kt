@@ -2,6 +2,7 @@ package com.example.test.screen.main
 
 
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import androidx.fragment.app.Fragment
 import com.example.movies.utlis.base.BaseActivity
@@ -15,13 +16,27 @@ import com.example.test.screen.tab4.Tab4Fragment
 class MainActivity : BaseActivity<ActivityMainBinding>(
     ActivityMainBinding::inflate
 ) {
-    var bundleget: Bundle?=null
+    private val fragment1 = Tab1Fragment()
+    private val fragment2 = Tab2Fragment()
+    private val fragment3 = Tab3Fragment()
+    private val fragment4 = Tab4Fragment()
+    private val fragmentList = listOf(fragment1, fragment2, fragment3, fragment4)
+    private val tagList = listOf(TAG_GOOGLE, TAG_STACK_OVER_FLOW, TAG_PERMISSION, TAG_PERSON)
     override fun initView() {
-        switchFragment(Tab1Fragment(), TAG_GOOGLE)
+        addFragment(Tab1Fragment(), TAG_GOOGLE)
     }
 
     override fun initData() {
-        //TODO("Not yet implemented")
+        initFragment()
+    }
+
+    private fun initFragment() {
+        Log.e("init Fragment:", "init")
+        var count: Int = 0
+        for (fragment in fragmentList) {
+            addFragment(fragment, tagList.get(count++))
+        }
+        showFragment(fragment1)
     }
 
     override fun handleEvent() {
@@ -41,19 +56,19 @@ class MainActivity : BaseActivity<ActivityMainBinding>(
             bottomNavigation.setOnNavigationItemSelectedListener { item ->
                 when (item.itemId) {
                     com.example.test.R.id.menu_google -> {
-                        switchFragment(Tab1Fragment(), TAG_GOOGLE)
+                        showHideFragment(fragment1)
                         return@setOnNavigationItemSelectedListener true
                     }
                     com.example.test.R.id.menu_stack_over_flow -> {
-                        switchFragment(Tab2Fragment(), TAG_STACK_OVER_FLOW)
+                        showHideFragment(fragment2)
                         return@setOnNavigationItemSelectedListener true
                     }
                     com.example.test.R.id.menu_permission -> {
-                        switchFragment(Tab3Fragment(), TAG_PERMISSION)
+                        showHideFragment(fragment3)
                         return@setOnNavigationItemSelectedListener true
                     }
                     com.example.test.R.id.menu_person -> {
-                        switchFragment(Tab4Fragment(), TAG_PERSON)
+                        showHideFragment(fragment4)
                         return@setOnNavigationItemSelectedListener true
                     }
 
@@ -62,18 +77,42 @@ class MainActivity : BaseActivity<ActivityMainBinding>(
             }
         }
     }
+    fun showHideFragment(fragmentShow: Fragment) {
+        for (fragment in fragmentList) {
+            if (fragment == fragmentShow) {
+                showFragment(fragment)
+            }else{
+                hideFragment(fragment)
+            }
+        }
+    }
 
-    fun switchFragment(fragment: Fragment, tag: String) {
+    fun addFragment(fragment: Fragment, tag: String) {
         if (supportFragmentManager.findFragmentByTag(tag) != null) return
         supportFragmentManager
             .beginTransaction()
-            .replace(com.example.test.R.id.frame_container, fragment,tag)
+            .add(com.example.test.R.id.frame_container, fragment,tag)
+            .hide(fragment)
             .commit()
     }
-    fun getBundle(): Bundle{
-        bundleget = Bundle()
-        return bundleget as Bundle
+
+    // Hàm ẩn hiện fragment
+
+    fun showFragment(fragment: Fragment) {
+        supportFragmentManager
+            .beginTransaction()
+            .show(fragment)
+            .commit()
     }
+
+    fun hideFragment(fragment: Fragment) {
+        supportFragmentManager
+            .beginTransaction()
+            .hide(fragment)
+            .commit()
+    }
+
+
 
     companion object {
         const val TAG_GOOGLE = "google.com"

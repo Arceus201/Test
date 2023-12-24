@@ -1,0 +1,144 @@
+@Entity(tableName = "your_table_name")
+data class YourEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val data: String // Thêm các trường dữ liệu khác nếu cần
+)
+
+@Dao
+interface YourDao {
+    @Query("SELECT * FROM your_table_name")
+    fun getAll(): LiveData<List<YourEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(entity: YourEntity)
+
+    @Delete
+    suspend fun delete(entity: YourEntity)
+}
+
+@Database(entities = [YourEntity::class], version = 1, exportSchema = false)
+abstract class YourRoomDatabase : RoomDatabase() {
+    abstract fun yourDao(): YourDao
+
+    companion object {
+        @Volatile
+        private var INSTANCE: YourRoomDatabase? = null
+
+        fun getDatabase(context: Context): YourRoomDatabase {
+            return INSTANCE ?: synchronized(this) {
+                val instance = Room.databaseBuilder(
+                    context.applicationContext,
+                    YourRoomDatabase::class.java,
+                    "your_database_name"
+                ).build()
+                INSTANCE = instance
+                instance
+            }
+        }
+    }
+}
+
+class YourRepository(private val yourDao: YourDao) {
+    val allData: LiveData<List<YourEntity>> = yourDao.getAll()
+
+    suspend fun insert(entity: YourEntity) {
+        withContext(Dispatchers.IO) {
+            yourDao.insert(entity)
+        }
+    }
+
+    suspend fun delete(entity: YourEntity) {
+        withContext(Dispatchers.IO) {
+            yourDao.delete(entity)
+        }
+    }
+}
+
+class YourPresenter(
+    private val repository: YourRepository,
+    private val view: YourView,
+    private val coroutineScope: CoroutineScope
+) {
+
+    fun getAllData() {
+        repository.allData.observe(view.getLifecycleOwner(), Observer {
+            // Cập nhật dữ liệu trên View khi có sự thay đổi
+            view.showData(it)
+        })
+    }
+
+    fun insertData(entity: YourEntity) {
+        coroutineScope.launch {
+            try {
+                repository.insert(entity)
+                view.showToast("Insert successful")
+            } catch (e: Exception) {
+                view.showToast("Insert failed")
+            }
+        }
+    }
+
+    fun deleteData(entity: YourEntity) {
+        coroutineScope.launch {
+            try {
+                repository.delete(entity)
+                view.showToast("Delete successful")
+            } catch (e: Exception) {
+                view.showToast("Delete failed")
+            }
+        }
+    }
+
+    fun onDestroy() {
+        coroutineScope.cancel() // Hủy tất cả các coroutine khi đối tượng bị hủy
+    }
+}
+
+
+interface YourView {
+    fun getLifecycleOwner(): LifecycleOwner
+    fun showData(data: List<YourEntity>)
+    fun showToast(message: String)
+}
+
+class YourActivity : AppCompatActivity(), YourView {
+
+    private lateinit var presenter: YourPresenter
+    private lateinit var adapter: YourAdapter // Đảm bảo bạn đã tạo một Adapter phù hợp với dữ liệu của mình
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        adapter = YourAdapter() // Khởi tạo Adapter
+        recyclerView.adapter = adapter // Thiết lập Adapter cho RecyclerView
+
+        presenter = YourPresenter(
+            YourRepository(YourRoomDatabase.getDatabase(this).yourDao()),
+            this,
+            lifecycleScope
+        )
+
+        presenter.getAllData()
+
+        // Thực hiện các hành động khác...
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        presenter.onDestroy()
+    }
+
+    // Các phương thức implement từ YourView
+    override fun getLifecycleOwner(): LifecycleOwner = this
+
+    override fun showData(data: List<YourEntity>) {
+        // Cập nhật dữ liệu của Adapter, Adapter sẽ tự động cập nhật RecyclerView
+        adapter.submitList(data)
+    }
+
+    override fun showToast(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+}

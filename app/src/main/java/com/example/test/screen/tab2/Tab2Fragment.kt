@@ -27,11 +27,6 @@ class Tab2Fragment : BaseFragment<FragmentTab2Binding>(
     }
 
 
-    override fun onPause() {
-        super.onPause()
-        val bundle = (activity as MainActivity).getBundle()
-        binding.webViewStack.saveState(bundle)
-    }
 
 
     fun configureWebViewSettings() {
